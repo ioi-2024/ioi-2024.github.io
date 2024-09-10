@@ -70,6 +70,8 @@ var Overview = new function () {
             }
         });
 
+        DataStore.score_events.add(self.score_handler);
+        DataStore.rank_events.add(self.rank_handler);
         DataStore.select_events.add(self.select_handler);
 
 

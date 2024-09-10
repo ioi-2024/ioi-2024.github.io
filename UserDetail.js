@@ -103,21 +103,15 @@ var UserDetail = new function () {
 
         HistoryStore.request_update(self.history_callback);
 
-        if (DataStore.asset_config && DataStore.asset_config["nosublist"]) {
-            self.data_fetched = 3
-            self.do_show();
-        } else {
-            $.ajax({
-                url: Config.get_submissions_url(self.user_id),
-                dataType: "json",
-                success: self.submissions_callback,
-                error: function () {
-                    console.error("Error while getting the submissions for " + self.user_id);
-                    self.data_fetched = 3;
-                    self.do_show();
-                }
-            });
-        }
+        $.ajax({
+            url: Config.get_submissions_url(self.user_id),
+            dataType: "json",
+            cache: false,
+            success: self.submissions_callback,
+            error: function () {
+                console.error("Error while getting the submissions for " + self.user_id);
+            }
+        });
     };
 
     self.history_callback = function () {
@@ -157,24 +151,15 @@ var UserDetail = new function () {
     };
 
     self.do_show = function () {
-        if (self.data_fetched >= 2) {
+        if (self.data_fetched == 2) {
             self.f_name_label.text(self.user["f_name"]);
             self.l_name_label.text(self.user["l_name"]);
-            if (DataStore.asset_config && DataStore.asset_config["nofaces"])
-                self.face_image.addClass("hidden")
-            else {
-                self.face_image.removeClass("hidden")
-                self.face_image.attr("src", Config.get_face_url(self.user_id));
-            }
+            self.face_image.attr("src", Config.get_face_url(self.user_id));
 
             if (self.user["team"]) {
                 self.team_label.text(DataStore.teams[self.user["team"]]["name"]);
-                if (DataStore.asset_config && DataStore.asset_config["noflags"])
-                    self.flag_image.addClass("hidden");
-                else{
-                    self.flag_image.attr("src", Config.get_flag_url(self.user['team']));
-                    self.flag_image.removeClass("hidden");
-                }
+                self.flag_image.attr("src", Config.get_flag_url(self.user['team']));
+                self.flag_image.removeClass("hidden");
             } else {
                 self.team_label.text("");
                 self.flag_image.addClass("hidden");
@@ -207,11 +192,9 @@ var UserDetail = new function () {
                     s += "<tr class=\"task\" data-task=\"" + t_id +"\"> \
                              <td class=\"name\">" + task['name'] + "</td> \
                              <td class=\"score\">" + (self.task_s[t_id].length > 0 ? round_to_str(self.task_s[t_id][self.task_s[t_id].length-1][1], task["score_precision"]) : 0) + "</td> \
-                             <td class=\"rank\">" + (self.task_r[t_id].length > 0 ? self.task_r[t_id][self.task_r[t_id].length-1][1] : 1) + "</td>"
-                    
-                    if (!(DataStore.asset_config && DataStore.asset_config["nosublist"])) s += "<td class=\"btn\"><a>Show</a></td>"
-                    
-                    s += "</tr>"
+                             <td class=\"rank\">" + (self.task_r[t_id].length > 0 ? self.task_r[t_id][self.task_r[t_id].length-1][1] : 1) + "</td> \
+                             <td class=\"btn\"><a>Show</a></td> \
+                          </tr>"
                 }
             }
 
@@ -332,7 +315,7 @@ var UserDetail = new function () {
             window.history.pushState(
                 {}, "", window.location.href.replace(/#.*$/, ''));
         }
-        window.document.title = "Ranking - Archived";
+        window.document.title = "Ranking";
         $("#UserDetail_bg").removeClass("open");
     };
 };

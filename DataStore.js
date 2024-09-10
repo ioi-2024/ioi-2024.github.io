@@ -40,8 +40,14 @@ var DataStore = new function () {
     self.users = new Object();
 
     self.contest_create = $.Callbacks();
+    self.contest_update = $.Callbacks();
+    self.contest_delete = $.Callbacks();
     self.task_create = $.Callbacks();
+    self.task_update = $.Callbacks();
+    self.task_delete = $.Callbacks();
     self.team_create = $.Callbacks();
+    self.team_update = $.Callbacks();
+    self.team_delete = $.Callbacks();
     self.user_create = $.Callbacks();
     self.user_update = $.Callbacks();
     self.user_delete = $.Callbacks();
@@ -54,12 +60,11 @@ var DataStore = new function () {
 
     self.contest_count = 0;
 
-    self.asset_config = null
-
     self.init_contests = function () {
         $.ajax({
             url: Config.get_contest_list_url(),
             dataType: "json",
+            cache: false,
             success: function (data, status, xhr) {
                 self.contest_init_time = parseFloat(xhr.getResponseHeader("Timestamp"));
                 for (var key in data) {
@@ -69,17 +74,45 @@ var DataStore = new function () {
             },
             error: function () {
                 console.error("Error while getting the list of contests");
-                self.update_network_status(2);
-            }
-        });
-        $.ajax({
-            url: Config.get_asset_config_url(),
-            dataType: "json",
-            success: function (data, status, xhr) {
-                self.asset_config = data;
+                self.update_network_status(4);
             }
         });
     }
+
+    self.contest_listener = function (event) {
+        var cmd = event.data.split(" ");
+        if (cmd[0] == "create") {
+            $.ajax({
+                url: Config.get_contest_read_url(cmd[1]),
+                dataType: "json",
+                cache: false,
+                success: function (data) {
+                    self.create_contest(cmd[1], data);
+                },
+                error: function () {
+                    console.error("Error while getting contest " + cmd[1]);
+                    self.es.close();
+                    self.update_network_status(4);
+                }
+            });
+        } else if (cmd[0] == "update") {
+            $.ajax({
+                url: Config.get_contest_read_url(cmd[1]),
+                dataType: "json",
+                cache: false,
+                success: function (data) {
+                    self.update_contest(cmd[1], data);
+                },
+                error: function () {
+                    console.error("Error while getting contest " + cmd[1]);
+                    self.es.close();
+                    self.update_network_status(4);
+                }
+            });
+        } else if (cmd[0] == "delete") {
+            self.delete_contest(cmd[1]);
+        }
+    };
 
     self.create_contest = function (key, data) {
         data["key"] = key;
@@ -93,6 +126,33 @@ var DataStore = new function () {
         self.contest_create.fire(key, data);
     };
 
+    self.update_contest = function (key, data) {
+        var old_data = self.contests[key];
+
+        data["key"] = key;
+        self.contests[key] = data;
+
+        console.info("Updated contest " + key);
+        console.log(old_data);
+        console.log(data);
+
+        self.contest_update.fire(key, old_data, data);
+    };
+
+    self.delete_contest = function (key) {
+        var old_data = self.contests[key];
+
+        delete self.contests[key];
+
+        console.info("Deleted contest " + key);
+        console.log(old_data);
+
+        self.contest_count -= 1;
+
+        self.contest_delete.fire(key, old_data);
+    };
+
+
     ////// Task
 
     self.task_count = 0;
@@ -101,6 +161,7 @@ var DataStore = new function () {
         $.ajax({
             url: Config.get_task_list_url(),
             dataType: "json",
+            cache: false,
             success: function (data, status, xhr) {
                 self.task_init_time = parseFloat(xhr.getResponseHeader("Timestamp"));
                 for (var key in data) {
@@ -113,16 +174,54 @@ var DataStore = new function () {
             },
             error: function () {
                 console.error("Error while getting the list of tasks");
-                self.update_network_status(2);
+                self.update_network_status(4);
             }
         });
     }
+
+    self.task_listener = function (event) {
+        var cmd = event.data.split(" ");
+        if (cmd[0] == "create") {
+            $.ajax({
+                url: Config.get_task_read_url(cmd[1]),
+                dataType: "json",
+                cache: false,
+                success: function (data) {
+                    self.create_task(cmd[1], data);
+                },
+                error: function () {
+                    console.error("Error while getting task " + cmd[1]);
+                    self.es.close();
+                    self.update_network_status(4);
+                }
+            });
+        } else if (cmd[0] == "update") {
+            $.ajax({
+                url: Config.get_task_read_url(cmd[1]),
+                dataType: "json",
+                cache: false,
+                success: function (data) {
+                    self.update_task(cmd[1], data);
+                },
+                error: function () {
+                    console.error("Error while getting task " + cmd[1]);
+                    self.es.close();
+                    self.update_network_status(4);
+                }
+            });
+        } else if (cmd[0] == "delete") {
+            self.delete_task(cmd[1]);
+        }
+    };
 
     self.create_task = function (key, data) {
         if (self.contests[data["contest"]] === undefined)
         {
             console.error("Could not find contest " + data["contest"] + " for task " + key);
-            self.update_network_status(2);
+            if (self.es) {
+                self.es.close();
+            }
+            self.update_network_status(4);
             return;
         }
 
@@ -137,6 +236,33 @@ var DataStore = new function () {
         self.task_create.fire(key, data);
     };
 
+    self.update_task = function (key, data) {
+        var old_data = self.tasks[key];
+
+        data["key"] = key;
+        self.tasks[key] = data;
+
+        console.info("Updated task " + key);
+        console.log(old_data);
+        console.log(data);
+
+        self.task_update.fire(key, old_data, data);
+    };
+
+    self.delete_task = function (key) {
+        var old_data = self.tasks[key];
+
+        delete self.tasks[key];
+
+        console.info("Deleted task " + key);
+        console.log(old_data);
+
+        self.task_count -= 1;
+
+        self.task_delete.fire(key, old_data);
+    };
+
+
     ////// Team
 
     self.team_count = 0;
@@ -145,6 +271,7 @@ var DataStore = new function () {
         $.ajax({
             url: Config.get_team_list_url(),
             dataType: "json",
+            cache: false,
             success: function (data, status, xhr) {
                 self.team_init_time = parseFloat(xhr.getResponseHeader("Timestamp"));
                 for (var key in data) {
@@ -154,10 +281,45 @@ var DataStore = new function () {
             },
             error: function () {
                 console.error("Error while getting the list of teams");
-                self.update_network_status(2);
+                self.update_network_status(4);
             }
         });
     }
+
+    self.team_listener = function (event) {
+        var cmd = event.data.split(" ");
+        if (cmd[0] == "create") {
+            $.ajax({
+                url: Config.get_team_read_url(cmd[1]),
+                dataType: "json",
+                cache: false,
+                success: function (data) {
+                    self.create_team(cmd[1], data);
+                },
+                error: function () {
+                    console.error("Error while getting team " + cmd[1]);
+                    self.es.close();
+                    self.update_network_status(4);
+                }
+            });
+        } else if (cmd[0] == "update") {
+            $.ajax({
+                url: Config.get_team_read_url(cmd[1]),
+                dataType: "json",
+                cache: false,
+                success: function (data) {
+                    self.update_team(cmd[1], data);
+                },
+                error: function () {
+                    console.error("Error while getting team " + cmd[1]);
+                    self.es.close();
+                    self.update_network_status(4);
+                }
+            });
+        } else if (cmd[0] == "delete") {
+            self.delete_team(cmd[1]);
+        }
+    };
 
     self.create_team = function (key, data) {
         data["key"] = key;
@@ -171,6 +333,33 @@ var DataStore = new function () {
         self.team_create.fire(key, data);
     };
 
+    self.update_team = function (key, data) {
+        var old_data = self.teams[key];
+
+        data["key"] = key;
+        self.teams[key] = data;
+
+        console.info("Updated team " + key);
+        console.log(old_data);
+        console.log(data);
+
+        self.team_update.fire(key, old_data, data);
+    };
+
+    self.delete_team = function (key) {
+        var old_data = self.teams[key];
+
+        delete self.teams[key];
+
+        console.info("Deleted team " + key);
+        console.log(old_data);
+
+        self.team_count -= 1;
+
+        self.team_delete.fire(key, old_data);
+    };
+
+
     ////// User
 
     self.user_count = 0;
@@ -179,6 +368,7 @@ var DataStore = new function () {
         $.ajax({
             url: Config.get_user_list_url(),
             dataType: "json",
+            cache: false,
             success: function (data, status, xhr) {
                 self.user_init_time = parseFloat(xhr.getResponseHeader("Timestamp"));
                 for (var key in data) {
@@ -191,11 +381,45 @@ var DataStore = new function () {
             },
             error: function () {
                 console.error("Error while getting the list of users");
-                self.update_network_status(2);
+                self.update_network_status(4);
             }
         });
     }
 
+    self.user_listener = function (event) {
+        var cmd = event.data.split(" ");
+        if (cmd[0] == "create") {
+            $.ajax({
+                url: Config.get_user_read_url(cmd[1]),
+                dataType: "json",
+                cache: false,
+                success: function (data) {
+                    self.create_user(cmd[1], data);
+                },
+                error: function () {
+                    console.error("Error while getting user " + cmd[1]);
+                    self.es.close();
+                    self.update_network_status(4);
+                }
+            });
+        } else if (cmd[0] == "update") {
+            $.ajax({
+                url: Config.get_user_read_url(cmd[1]),
+                dataType: "json",
+                cache: false,
+                success: function (data) {
+                    self.update_user(cmd[1], data);
+                },
+                error: function () {
+                    console.error("Error while getting user " + cmd[1]);
+                    self.es.close();
+                    self.update_network_status(4);
+                }
+            });
+        } else if (cmd[0] == "delete") {
+            self.delete_user(cmd[1]);
+        }
+    };
 
     self.create_user = function (key, data) {
         if (data["team"] !== null && self.teams[data["team"]] === undefined)
@@ -204,7 +428,7 @@ var DataStore = new function () {
             if (self.es) {
                 self.es.close();
             }
-            self.update_network_status(2);
+            self.update_network_status(4);
             return;
         }
 
@@ -218,6 +442,33 @@ var DataStore = new function () {
 
         self.user_create.fire(key, data);
     };
+
+    self.update_user = function (key, data) {
+        var old_data = self.users[key];
+
+        data["key"] = key;
+        self.users[key] = data;
+
+        console.info("Updated user " + key);
+        console.log(old_data);
+        console.log(data);
+
+        self.user_update.fire(key, old_data, data);
+    };
+
+    self.delete_user = function (key) {
+        var old_data = self.users[key];
+
+        delete self.users[key];
+
+        console.info("Deleted user " + key);
+        console.log(old_data);
+
+        self.user_count -= 1;
+
+        self.user_delete.fire(key, old_data);
+    };
+
 
     ////// Default scores
 
@@ -238,6 +489,31 @@ var DataStore = new function () {
         }
     });
 
+    self.contest_update.add(function (key, old_data, data) {
+        // Maximum score
+        data["max_score"] = old_data["max_score"];
+        delete old_data["max_score"];
+        // Global score precision
+        self.global_score_precision = 0;
+        for (var c_id in self.contests) {
+            self.global_score_precision = Math.max(self.global_score_precision, self.contests[c_id]["score_precision"]);
+        }
+    });
+
+    self.contest_delete.add(function (key, old_data) {
+        // Remove scores
+        for (var u_id in self.users) {
+            delete self.users[u_id]["c_" + key];
+        }
+        // Maximum score
+        delete old_data["max_score"];
+        // Global score precision
+        self.global_score_precision = 0;
+        for (var c_id in self.contests) {
+            self.global_score_precision = Math.max(self.global_score_precision, self.contests[c_id]["score_precision"]);
+        }
+    });
+
     self.task_create.add(function (key, data) {
         // Add scores
         for (var u_id in self.users) {
@@ -246,6 +522,28 @@ var DataStore = new function () {
         // Maximum score
         self.contests[data["contest"]]["max_score"] += data["max_score"];
         self.global_max_score += data["max_score"];
+    });
+
+    self.task_update.add(function (key, old_data, data) {
+        /* TODO: We may want to check that all scores are still less than or
+           equal to the maximum achievable score. Or we may assume that this is
+           handled by the server.
+         */
+        // Maximum score
+        self.contests[old_data["contest"]]["max_score"] -= old_data["max_score"];
+        self.global_max_score -= old_data["max_score"];
+        self.contests[data["contest"]]["max_score"] += data["max_score"];
+        self.global_max_score += data["max_score"];
+    });
+
+    self.task_delete.add(function (key, old_data) {
+        // Remove scores
+        for (var u_id in self.users) {
+            delete self.users[u_id]["t_" + key];
+        }
+        // Maximum score
+        self.contests[old_data["contest"]]["max_score"] -= old_data["max_score"];
+        self.global_max_score -= old_data["max_score"];
     });
 
     self.user_create.add(function (key, data) {
@@ -259,12 +557,39 @@ var DataStore = new function () {
         data["global"] = 0.0;
     });
 
+    self.user_update.add(function (key, old_data, data) {
+        // Copy scores
+        for (var t_id in self.tasks) {
+            data["t_" + t_id] = old_data["t_" + t_id];
+            delete old_data["t_" + t_id];
+        }
+        for (var c_id in self.contests) {
+            data["c_" + c_id] = old_data["c_" + c_id];
+            delete old_data["c_" + c_id];
+        }
+        data["global"] = old_data["global"];
+        delete old_data["global"];
+    });
+
+    self.user_delete.add(function (key, old_data) {
+        // Remove scores
+        for (var t_id in self.tasks) {
+            delete old_data["t_" + t_id];
+        }
+        for (var c_id in self.contests) {
+            delete old_data["c_" + c_id];
+        }
+        delete old_data["global"];
+    });
+
+
     ////// Score
 
     self.init_scores = function () {
         $.ajax({
             url: Config.get_score_url(),
             dataType: "json",
+            cache: false,
             success: function (data, status, xhr) {
                 self.score_init_time = parseFloat(xhr.getResponseHeader("Timestamp"));
                 for (var u_id in data) {
@@ -276,9 +601,17 @@ var DataStore = new function () {
             },
             error: function () {
                 console.error("Error while getting the scores");
-                self.update_network_status(2);
+                self.update_network_status(4);
             }
         });
+    };
+
+    self.score_listener = function (event) {
+        var data = event.data.split("\n");
+        for (var idx in data) {
+            var line = data[idx].split(" ");
+            self.set_score(line[0], line[1], parseFloat(line[2]));
+        }
     };
 
     self.set_score = function (u_id, t_id, new_t_score) {
@@ -367,6 +700,8 @@ var DataStore = new function () {
             user["rank"] = rank;
         }
 
+        self.score_events.add(self.update_rank);
+
         self.user_create.add(function (u_id, user) {
             /* We're actually just counting how many users have a non-zero
                global score and setting the rank of the new user to that number
@@ -399,7 +734,58 @@ var DataStore = new function () {
             delete old_user["rank"];
         });
 
+        self.create_event_source();
         self.init_callback();
+    };
+
+    self.update_rank = function (u_id, user) {
+        /* The rank of a user is defined as the number of other users that have
+           a score greater than theirs, plus one. Note that:
+               a.score < b.score if and only if a.rank > b.rank
+               a.score = b.score if and only if a.rank = b.rank
+               a.score > b.score if and only if a.rank < b.rank
+           Thus it's the same to sort by ascending score or by descending rank,
+           and vice versa.
+           When a user's score is updated (e.g. it changes from old_score to
+           new_score with new_score > old_score) it can be shown that:
+             - all users whose score is >= new_score don't change their rank
+             - all users whose score is < old_score don't change their rank
+             - all other users have their rank increased by exactly one
+           A similar proposition holds when new_score < old_score.
+         */
+
+        // We don't know old_score but we'll see that it's not needed.
+        var new_score = user["global"];
+        var old_rank = user["rank"];
+        // The new rank is computed by strictly applying the definition:
+        //     new_rank = 1 + |{user2 in users, user2.score > user.score}|
+        var new_rank = 1;
+
+        for (var u2_id in self.users) {
+            var user2 = self.users[u2_id];
+            // this condition is equivalent to
+            //     old_score <= user2["global"] < new_score
+            if (old_rank >= user2["rank"] && user2["global"] < new_score) {
+                user2["rank"] += 1;
+                self.rank_events.fire(u2_id, user2, +1);
+            // this condition is equivalent to
+            //     new_score <= user2["global"] < old_score
+            } else if (new_score <= user2["global"] && user2["rank"] > old_rank) {
+                user2["rank"] -= 1;
+                self.rank_events.fire(u2_id, user2, -1);
+            }
+            if (user2["global"] > new_score) {
+                new_rank += 1;
+            }
+        }
+
+        user["rank"] = new_rank;
+
+        if (old_rank != new_rank) {
+            console.info("Changed rank for user " + u_id + ": " + old_rank + " -> " + new_rank);
+
+            self.rank_events.fire(u_id, user, new_rank - old_rank);
+        }
     };
 
 
@@ -423,7 +809,6 @@ var DataStore = new function () {
 
         self.init_contests();
         self.init_teams();
-        if (self.network_state == 0) self.update_network_status(1)
     };
 
 
@@ -431,22 +816,110 @@ var DataStore = new function () {
 
     /* We set the listeners for Server Sent Events. */
 
-    self.network_state = 0;
+    self.last_event_id = null;
+
+    self.create_event_source = function () {
+        if (self.last_event_id == null) {
+            self.last_event_id = Math.round(Math.min(self.contest_init_time,
+                                                     self.task_init_time,
+                                                     self.team_init_time,
+                                                     self.user_init_time,
+                                                     self.score_init_time) * 1000000).toString(16);
+        }
+
+        if (self.es) {
+            delete self.es;
+        }
+
+        self.es = new EventSource(Config.get_event_url(self.last_event_id));
+
+        self.es.addEventListener("open", self.es_open_handler, false);
+        self.es.addEventListener("error", self.es_error_handler, false);
+        self.es.addEventListener("reload", self.es_reload_handler, false);
+        self.es.addEventListener("contest", function (event) {
+            var timestamp = parseInt(event.lastEventId, 16) / 1000000;
+            if (timestamp > self.contest_init_time) {
+                self.contest_listener(event);
+            }
+            self.last_event_id = event.lastEventId;
+        }, false);
+        self.es.addEventListener("task", function (event) {
+            var timestamp = parseInt(event.lastEventId, 16) / 1000000;
+            if (timestamp > self.task_init_time) {
+                self.task_listener(event);
+            }
+            self.last_event_id = event.lastEventId;
+        }, false);
+        self.es.addEventListener("team", function (event) {
+            var timestamp = parseInt(event.lastEventId, 16) / 1000000;
+            if (timestamp > self.team_init_time) {
+                self.team_listener(event);
+            }
+            self.last_event_id = event.lastEventId;
+        }, false);
+        self.es.addEventListener("user", function (event) {
+            var timestamp = parseInt(event.lastEventId, 16) / 1000000;
+            if (timestamp > self.user_init_time) {
+                self.user_listener(event);
+            }
+            self.last_event_id = event.lastEventId;
+        }, false);
+        self.es.addEventListener("score", function (event) {
+            var timestamp = parseInt(event.lastEventId, 16) / 1000000;
+            if (timestamp > self.score_init_time) {
+                self.score_listener(event);
+            }
+            self.last_event_id = event.lastEventId;
+        }, false);
+    };
 
     self.update_network_status = function (state) {
-        self.network_state = state;
-        if (state == 0) {
+        if (state == 0) { // self.es.CONNECTING
             $("#ConnectionStatus_box").attr("data-status", "reconnecting");
-            $("#ConnectionStatus_text").text("You are downloading the archived data from the server...");
-            $("#ConnectionStatus_label").html("Loading");
-        } else if (state == 1) {
+            $("#ConnectionStatus_text").text("You are disconnected from the server but your browser is trying to connect.");
+        } else if (state == 1) { // self.es.OPEN
             $("#ConnectionStatus_box").attr("data-status", "connected");
-            $("#ConnectionStatus_text").html("The archived data are successfully loaded");
-            $("#ConnectionStatus_label").html("Archived");
-        } else if (state == 2) {
+            $("#ConnectionStatus_text").text("You are connected to the server and are receiving live updates.");
+        } else if (state == 2) { // self.es.CLOSED
+            $("#ConnectionStatus_box").attr("data-status", "disconnected");
+            $("#ConnectionStatus_text").html("You are disconnected from the server but you can <a onclick=\"DataStore.create_event_source();\">try to connect</a>.");
+        } else if (state == 3) { // "reload" event received
+            $("#ConnectionStatus_box").attr("data-status", "outdated");
+            $("#ConnectionStatus_text").html("Your local data cannot be updated. Please <a onclick=\"window.location.reload();\">reload the page</a>.");
+        } else if (state == 4) { // an init failed
             $("#ConnectionStatus_box").attr("data-status", "init_error");
             $("#ConnectionStatus_text").html("An error occurred while loading the data. Check your connection and <a onclick=\"window.location.reload();\">reload the page</a>.");
-            $("#ConnectionStatus_label").html("Error");
+        }
+    };
+
+    self.es_open_handler = function () {
+        if (self.es.readyState == self.es.OPEN) {
+            console.info("EventSource connected");
+            self.update_network_status(self.es.readyState);
+        } else {
+            console.error("EventSource shouldn't be in state " + self.es.readyState + " during a 'open' event!");
+        }
+    };
+
+    self.es_error_handler = function () {
+        if (self.es.readyState == self.es.CONNECTING) {
+            console.info("EventSource reconnecting");
+            self.update_network_status(self.es.readyState);
+        } else if (self.es.readyState == self.es.CLOSED) {
+            console.info("EventSource disconnected");
+            self.update_network_status(self.es.readyState);
+        } else {
+            console.error("EventSource shouldn't be in state " + self.es.readyState + " during a 'error' event!");
+        }
+    };
+
+    self.es_reload_handler = function () {
+        if (self.es.readyState == self.es.OPEN) {
+            console.info("Received a 'reload' event");
+            self.es.close();
+            self.update_network_status(3);
+        } else {
+            console.error("EventSource shouldn't be in state " + self.es.readyState + " during a 'reload' event!");
         }
     };
 
@@ -476,9 +949,30 @@ var DataStore = new function () {
         self.contest_list.push(a);
     };
 
+    self.contest_list_remove = function (key, old_data) {
+        // Remove data from the sorted contest list
+        for (var i = 0; i < self.contest_list.length; i += 1) {
+            var b = self.contest_list[i];
+            if (key == b["key"]) {
+                self.contest_list.splice(i, 1);
+                return;
+            }
+        }
+    };
+
     self.contest_create.add(function (key, data) {
         data["tasks"] = new Array();
         self.contest_list_insert(key, data);
+    });
+    self.contest_update.add(function (key, old_data, data) {
+        data["tasks"] = old_data["tasks"];
+        delete old_data["tasks"];
+        self.contest_list_remove(key, old_data);
+        self.contest_list_insert(key, data);
+    });
+    self.contest_delete.add(function (key, old_data) {
+        delete old_data["tasks"];
+        self.contest_list_remove(key, old_data);
     });
 
 
@@ -502,7 +996,26 @@ var DataStore = new function () {
         task_list.push(a);
     };
 
+    self.task_list_remove = function (key, old_data) {
+        var task_list = self.contests[old_data["contest"]]["tasks"];
+
+        // Remove data from the sorted task list of the contest
+        for (var i = 0; i < task_list.length; i += 1) {
+            var b = task_list[i];
+            if (key == b["key"]) {
+                task_list.splice(i, 1);
+                break;
+            }
+        }
+    };
+
     self.task_create.add(self.task_list_insert);
+    self.task_update.add(function (key, old_data, data) {
+        self.task_list_remove(key, old_data);
+        self.task_list_insert(key, data);
+    });
+    self.task_delete.add(self.task_list_remove);
+
 
     ////// Sorted team list
 
@@ -523,9 +1036,30 @@ var DataStore = new function () {
         self.team_list.push(a);
     };
 
+    self.team_list_remove = function (key, old_data) {
+        // Remove data from the sorted team list
+        for (var i = 0; i < self.team_list.length; i += 1) {
+            var b = self.team_list[i];
+            if (key == b["key"]) {
+                self.team_list.splice(i, 1);
+                break;
+            }
+        }
+    }
+
     self.team_create.add(function (key, data) {
         data["users"] = new Array();
         self.team_list_insert(key, data);
+    });
+    self.team_update.add(function (key, old_data, data) {
+        data["users"] = old_data["users"];
+        delete old_data["users"];
+        self.team_list_remove(key, old_data);
+        self.team_list_insert(key, data);
+    });
+    self.team_delete.add(function (key, old_data) {
+        delete old_data["users"];
+        self.team_list_remove(key, old_data);
     });
 
 

@@ -22,16 +22,32 @@ var Config = new function () {
         return "contests/";
     };
 
+    self.get_contest_read_url = function (c_key) {
+        return "contests/" + c_key;
+    };
+
     self.get_task_list_url = function () {
         return "tasks/";
+    };
+
+    self.get_task_read_url = function (t_key) {
+        return "tasks/" + t_key;
     };
 
     self.get_team_list_url = function () {
         return "teams/";
     };
 
+    self.get_team_read_url = function (t_key) {
+        return "teams/" + t_key;
+    };
+
     self.get_user_list_url = function () {
         return "users/";
+    };
+
+    self.get_user_read_url = function (u_key) {
+        return "users/" + u_key;
     };
 
     self.get_flag_url = function (t_key) {
@@ -50,11 +66,11 @@ var Config = new function () {
         return "scores";
     };
 
+    self.get_event_url = function (last_event_id) {
+        return "events?last_event_id=" + last_event_id;
+    };
+
     self.get_history_url = function () {
         return "history";
-    }
-
-    self.get_asset_config_url = function() {
-        return "asset_config"
     }
 };
