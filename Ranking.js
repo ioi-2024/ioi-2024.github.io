@@ -36,7 +36,7 @@ if (!window.console.error) {
 }
 
 $(document).ready(function() {
-    DataStore.init(function(){
+    DataStore.init(function() {
         HistoryStore.init();
         UserDetail.init();
         TimeView.init();
