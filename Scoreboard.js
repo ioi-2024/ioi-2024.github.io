@@ -191,7 +191,6 @@ var Scoreboard = new function () {
     <th class=\"rank\">Rank</th> \
     <th colspan=\"10\" class=\"f_name\">First Name</th> \
     <th colspan=\"10\" class=\"l_name\">Last Name</th> \
-    <th class=\"user_id\">ID</th> \
     <th class=\"team\">Team</th>";
 
         var contests = DataStore.contest_list;
@@ -238,8 +237,7 @@ var Scoreboard = new function () {
     <td class=\"sel\"></td> \
     <td class=\"rank\">" + user["rank"] + "</td> \
     <td colspan=\"10\" class=\"f_name\">" + escapeHTML(user["f_name"]) + "</td> \
-    <td colspan=\"10\" class=\"l_name\">" + escapeHTML(user["l_name"]) + "</td> \
-    <td class=\"user_id\">" + user["key"] + "</td>";
+    <td colspan=\"10\" class=\"l_name\">" + escapeHTML(user["l_name"]) + "</td>";
 
         if (user['team']) {
             result += " \
