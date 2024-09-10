@@ -299,7 +299,7 @@
         "tree": 10.0,
         "nile": 67.0
     },
-    "ioi44": {
+    "isr4": {
         "message": 66.72,
         "sphinx": 100.0,
         "nile": 67.0,
@@ -454,7 +454,7 @@
         "tree": 10.0,
         "message": 45.75
     },
-    "ioi43": {
+    "isr3": {
         "message": 63.88,
         "tree": 48.0,
         "hieroglyphs": 3.0,
@@ -1131,7 +1131,7 @@
         "message": 47.63,
         "sphinx": 37.0
     },
-    "ioi41": {
+    "isr1": {
         "sphinx": 64.0,
         "tree": 41.0,
         "message": 63.88,
@@ -1717,7 +1717,7 @@
         "tree": 10.0,
         "hieroglyphs": 3.0
     },
-    "ioi42": {
+    "isr2": {
         "tree": 59.0,
         "mosaic": 100.0,
         "hieroglyphs": 3.0,
